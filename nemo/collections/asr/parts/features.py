@@ -240,6 +240,17 @@ class FilterbankFeatures(nn.Module):
         self.n_fft = n_fft or 2 ** math.ceil(math.log2(self.win_length))
         self.stft_exact_pad = stft_exact_pad
         self.stft_conv = stft_conv
+        
+        def stft_func(x):
+            return stft_patch(
+                x,
+                n_fft=self.n_fft,
+                hop_length=self.hop_length,
+                win_length=self.win_length,
+                center=False if stft_exact_pad else True,
+                window=self.window.to(dtype=torch.float),
+                return_complex=False,
+            )
 
         if stft_conv:
             logging.info("STFT using conv")
@@ -260,15 +271,7 @@ class FilterbankFeatures(nn.Module):
             window_fn = torch_windows.get(window, None)
             window_tensor = window_fn(self.win_length, periodic=False) if window_fn else None
             self.register_buffer("window", window_tensor)
-            self.stft = lambda x: stft_patch(
-                x,
-                n_fft=self.n_fft,
-                hop_length=self.hop_length,
-                win_length=self.win_length,
-                center=False if stft_exact_pad else True,
-                window=self.window.to(dtype=torch.float),
-                return_complex=False,
-            )
+            self.stft = stft_func
 
         self.normalize = normalize
         self.log = log
